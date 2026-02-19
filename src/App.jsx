@@ -49,8 +49,18 @@ function App() {
             const toGeocode = aptGroups.slice(0, 30);
             for (const apt of toGeocode) {
                 try {
-                    const address = `${districtName} ${apt.dong} ${apt.jibun}`;
-                    const geoResult = await geocodeAddress(address);
+                    let address = `${districtName} ${apt.dong} ${apt.jibun}`;
+                    let geoResult = await geocodeAddress(address);
+
+                    // Retry with relaxed address (City + Dong) if failed
+                    // e.g. "창원시 성산구 북면" (Fail) -> "창원시 북면" (Success)
+                    if ((!geoResult.addresses || geoResult.addresses.length === 0) && districtName.includes(' ')) {
+                        const cityPart = districtName.split(' ')[0];
+                        const fallbackAddress = `${cityPart} ${apt.dong} ${apt.jibun}`;
+                        // console.log(`Geocoding retry: ${fallbackAddress}`);
+                        geoResult = await geocodeAddress(fallbackAddress);
+                    }
+
                     if (geoResult.addresses && geoResult.addresses.length > 0) {
                         const { x, y } = geoResult.addresses[0];
                         const avgPrice = apt.transactions.reduce((sum, t) => sum + t.price, 0) / apt.transactions.length;
@@ -62,7 +72,7 @@ function App() {
                         });
                     }
                 } catch (e) {
-                    // Skip failed geocoding
+                    // console.error('Geocoding failed for:', apt.aptName);
                 }
             }
 
