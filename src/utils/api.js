@@ -45,25 +45,19 @@ export async function fetchApartmentHistory(regionCode, aptName, months = 12) {
 }
 
 /**
- * Geocoding - 주소를 좌표로 변환 (카카오 지도 SDK 사용)
+ * Geocoding - 주소를 좌표로 변환 (서버 API 사용)
  * @param {string} query - 주소 문자열
  */
 export async function geocodeAddress(query) {
-    await kakaoMapsReady;
-    return new Promise((resolve, reject) => {
-        const geocoder = new window.kakao.maps.services.Geocoder();
-        geocoder.addressSearch(query, (result, status) => {
-            if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
-                const addresses = result.map(item => ({
-                    x: item.x,  // longitude
-                    y: item.y,  // latitude
-                }));
-                resolve({ addresses });
-            } else {
-                resolve({ addresses: [] });
-            }
+    try {
+        const { data } = await api.get('/geocode', {
+            params: { query },
         });
-    });
+        return data;
+    } catch (e) {
+        console.error('Geocoding failed for:', query, e.message);
+        return { addresses: [] };
+    }
 }
 
 export default api;
