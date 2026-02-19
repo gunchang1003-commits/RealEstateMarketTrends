@@ -4,7 +4,7 @@ import SearchPanel from './components/SearchPanel';
 import StatsCards from './components/StatsCards';
 import PriceChart from './components/PriceChart';
 import AptDetailPanel from './components/AptDetailPanel';
-import NaverMap from './components/NaverMap';
+import KakaoMap from './components/KakaoMap';
 import PanoramaView from './components/PanoramaView';
 import { fetchApartments, geocodeAddress } from './utils/api';
 import { REGION_CENTERS } from './utils/regions';
@@ -110,7 +110,7 @@ function App() {
                 <div className="header-right">
                     <div className="header-badge">
                         <span className="badge-dot"></span>
-                        네이버 지도 기반
+                        카카오 지도 기반
                     </div>
                 </div>
             </header>
@@ -209,7 +209,7 @@ function App() {
 
                 {/* Map Area */}
                 <main className="map-area">
-                    <NaverMap
+                    <KakaoMap
                         center={mapCenter}
                         zoom={mapZoom}
                         apartments={geocodedApts}

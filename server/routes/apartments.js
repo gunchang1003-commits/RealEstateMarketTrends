@@ -37,14 +37,29 @@ router.get('/', async (req, res) => {
                 numOfRows: 1000,
             },
             timeout: 15000,
+            responseType: 'text',
         });
 
-        const parsed = await parseStringPromise(response.data, {
-            explicitArray: false,
-            trim: true,
-        });
+        const rawData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
-        const body = parsed?.response?.body;
+        let body;
+        if (rawData.trim().startsWith('<')) {
+            // XML response
+            const parsed = await parseStringPromise(rawData, {
+                explicitArray: false,
+                trim: true,
+            });
+            body = parsed?.response?.body;
+        } else {
+            // JSON response
+            try {
+                const jsonData = typeof response.data === 'string' ? JSON.parse(rawData) : response.data;
+                body = jsonData?.response?.body;
+            } catch (e) {
+                console.error('API 응답 파싱 실패:', rawData.substring(0, 200));
+                return res.status(502).json({ error: 'API 응답 파싱 오류' });
+            }
+        }
         if (!body || !body.items) {
             return res.json({ apartments: [], totalCount: 0 });
         }
@@ -58,18 +73,18 @@ router.get('/', async (req, res) => {
         }
 
         const apartments = items.map((item) => ({
-            aptName: (item['아파트'] || item.aptNm || '').trim(),
-            price: (item['거래금액'] || item.dealAmount || '').trim().replace(/,/g, ''),
+            aptName: String(item['아파트'] || item.aptNm || '').trim(),
+            price: String(item['거래금액'] || item.dealAmount || '').trim().replace(/,/g, ''),
             area: parseFloat(item['전용면적'] || item.excluUseAr || 0),
             floor: parseInt(item['층'] || item.floor || 0, 10),
             buildYear: parseInt(item['건축년도'] || item.buildYear || 0, 10),
             dealYear: parseInt(item['년'] || item.dealYear || 0, 10),
             dealMonth: parseInt(item['월'] || item.dealMonth || 0, 10),
             dealDay: parseInt(item['일'] || item.dealDay || 0, 10),
-            dong: (item['법정동'] || item.umdNm || '').trim(),
-            jibun: (item['지번'] || item.jibun || '').trim(),
-            regionCode: (item['지역코드'] || item.dealingGbn || regionCode).toString().trim(),
-            serialNumber: (item['일련번호'] || '').toString().trim(),
+            dong: String(item['법정동'] || item.umdNm || '').trim(),
+            jibun: String(item['지번'] || item.jibun || '').trim(),
+            regionCode: String(item['지역코드'] || item.dealingGbn || regionCode).trim(),
+            serialNumber: String(item['일련번호'] || '').trim(),
         }));
 
         // Group by apartment name for aggregation
@@ -153,20 +168,27 @@ router.get('/history', async (req, res) => {
                             timeout: 15000,
                         })
                         .then(async (response) => {
-                            const parsed = await parseStringPromise(response.data, {
-                                explicitArray: false,
-                                trim: true,
-                            });
-                            const body = parsed?.response?.body;
+                            const rawData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                            let body;
+                            if (rawData.trim().startsWith('<')) {
+                                const parsed = await parseStringPromise(rawData, {
+                                    explicitArray: false,
+                                    trim: true,
+                                });
+                                body = parsed?.response?.body;
+                            } else {
+                                const jsonData = typeof response.data === 'string' ? JSON.parse(rawData) : response.data;
+                                body = jsonData?.response?.body;
+                            }
                             if (!body || !body.items) return;
                             let items = body.items.item;
                             if (!items) return;
                             if (!Array.isArray(items)) items = [items];
                             items.forEach((item) => {
-                                const name = (item['아파트'] || item.aptNm || '').trim();
+                                const name = String(item['아파트'] || item.aptNm || '').trim();
                                 if (name.includes(aptName)) {
                                     allTransactions.push({
-                                        price: parseInt((item['거래금액'] || '0').trim().replace(/,/g, ''), 10),
+                                        price: parseInt(String(item['거래금액'] || item.dealAmount || '0').trim().replace(/,/g, ''), 10),
                                         area: parseFloat(item['전용면적'] || 0),
                                         floor: parseInt(item['층'] || 0, 10),
                                         dealYear: parseInt(item['년'] || 0, 10),

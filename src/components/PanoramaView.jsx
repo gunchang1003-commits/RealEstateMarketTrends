@@ -1,31 +1,42 @@
 import { useEffect, useRef } from 'react';
+import { kakaoMapsReady } from '../utils/api';
 
 export default function PanoramaView({ position, onClose }) {
-    const panoRef = useRef(null);
-    const panoInstanceRef = useRef(null);
+    const roadviewRef = useRef(null);
+    const roadviewInstanceRef = useRef(null);
 
     useEffect(() => {
-        if (!window.naver || !window.naver.maps || !panoRef.current) return;
+        let cancelled = false;
 
-        const panoPosition = new window.naver.maps.LatLng(position.lat, position.lng);
+        kakaoMapsReady.then(() => {
+            if (cancelled || !roadviewRef.current) return;
 
-        panoInstanceRef.current = new window.naver.maps.Panorama(panoRef.current, {
-            position: panoPosition,
-            pov: {
-                pan: 0,
-                tilt: 0,
-                fov: 100,
-            },
-            flightSpot: true,
-            aroundControl: true,
-            zoomControl: true,
+            const roadviewContainer = roadviewRef.current;
+            const roadview = new window.kakao.maps.Roadview(roadviewContainer);
+            const roadviewClient = new window.kakao.maps.RoadviewClient();
+
+            const targetPosition = new window.kakao.maps.LatLng(position.lat, position.lng);
+
+            // Find nearest roadview pano within 50m radius
+            roadviewClient.getNearestPanoId(targetPosition, 50, (panoId) => {
+                if (panoId) {
+                    roadview.setPanoId(panoId, targetPosition);
+                } else {
+                    // If no roadview available within 50m, try 200m
+                    roadviewClient.getNearestPanoId(targetPosition, 200, (panoId2) => {
+                        if (panoId2) {
+                            roadview.setPanoId(panoId2, targetPosition);
+                        }
+                    });
+                }
+            });
+
+            roadviewInstanceRef.current = roadview;
         });
 
         return () => {
-            if (panoInstanceRef.current) {
-                panoInstanceRef.current.destroy();
-                panoInstanceRef.current = null;
-            }
+            cancelled = true;
+            roadviewInstanceRef.current = null;
         };
     }, [position.lat, position.lng]);
 
@@ -35,7 +46,7 @@ export default function PanoramaView({ position, onClose }) {
                 <span>📷 거리뷰</span>
                 <button className="panorama-close-btn" onClick={onClose}>✕</button>
             </div>
-            <div ref={panoRef} className="panorama-container" />
+            <div ref={roadviewRef} className="panorama-container" />
         </div>
     );
 }
