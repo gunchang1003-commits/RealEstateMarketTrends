@@ -39,10 +39,16 @@ function App() {
                 return;
             }
 
+            const clientId = import.meta.env.VITE_NAVER_CLIENT_ID?.trim();
+            if (!clientId) {
+                console.error('Naver Client ID is missing!');
+                return;
+            }
+
             const script = document.createElement('script');
             script.id = scriptId;
             script.type = 'text/javascript';
-            script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${import.meta.env.VITE_NAVER_CLIENT_ID}`;
+            script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`;
             script.async = true;
             document.head.appendChild(script);
 
