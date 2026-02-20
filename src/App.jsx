@@ -40,7 +40,7 @@ function App() {
             }
 
             // Fallback to hardcoded ID if env var fails
-            const clientId = import.meta.env.VITE_NAVER_CLIENT_ID?.trim() || 'rnv3toh53y';
+            const clientId = import.meta.env.VITE_NAVER_CLIENT_ID?.trim();
 
             if (!clientId) {
                 console.error('Naver Client ID is missing!');
