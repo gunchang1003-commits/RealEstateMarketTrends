@@ -45,6 +45,19 @@ export async function fetchApartmentHistory(regionCode, aptName, months = 12) {
 }
 
 /**
+ * 아파트 키워드 검색
+ * @param {string} regionCode - 법정동 코드
+ * @param {string} keyword - 검색할 아파트 이름 키워드
+ * @param {number} months - 최근 조회할 개월 수 (기본 6)
+ */
+export async function fetchApartmentsByKeyword(regionCode, keyword, months = 6) {
+    const { data } = await api.get('/apartments/search', {
+        params: { regionCode, keyword, months },
+    });
+    return data;
+}
+
+/**
  * Geocoding - 주소를 좌표로 변환 (서버 API 사용)
  * @param {string} query - 주소 문자열
  */

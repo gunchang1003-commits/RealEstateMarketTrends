@@ -772,3 +772,33 @@
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
+
+/* ===== Favorites ===== */
+.favorite-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: transform 0.2s, color 0.2s;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.favorite-btn:hover {
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.favorite-btn.active {
+    color: var(--accent-yellow, #ffd700);
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.favorite-btn.active:hover {
+    color: #ffed4a;
+    transform: scale(1.1);
+}

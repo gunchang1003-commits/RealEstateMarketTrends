@@ -238,4 +238,160 @@ router.get('/history', async (req, res) => {
     }
 });
 
+// GET /api/apartments/search?regionCode=11680&keyword=래미안&months=6
+router.get('/search', async (req, res) => {
+    try {
+        const { regionCode, keyword, months = 6 } = req.query;
+        if (!regionCode || !keyword) {
+            return res.status(400).json({ error: 'regionCode와 keyword 파라미터가 필요합니다.' });
+        }
+
+        const now = new Date();
+        const monthCount = Math.min(parseInt(months, 10), 12); // Limit to 12 months for performance
+        const allApartments = [];
+
+        const fetchPromises = [];
+        for (let i = 0; i < monthCount; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const ym = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+            const cacheKey = getCacheKey(regionCode, ym);
+            const cached = cache.get(cacheKey);
+
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+                // If we have cached data for this month, filter by keyword
+                const matching = cached.data.apartments.filter(
+                    (a) => a.aptName.includes(keyword)
+                );
+                allApartments.push(...matching);
+            } else {
+                fetchPromises.push(
+                    axios
+                        .get('https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade', {
+                            params: {
+                                serviceKey: process.env.DATA_GO_KR_API_KEY,
+                                LAWD_CD: regionCode,
+                                DEAL_YMD: ym,
+                                pageNo: 1,
+                                numOfRows: 1000,
+                            },
+                            timeout: 45000,
+                        })
+                        .then(async (response) => {
+                            const rawData = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                            let body;
+                            if (rawData.trim().startsWith('<')) {
+                                const parsed = await parseStringPromise(rawData, {
+                                    explicitArray: false,
+                                    trim: true,
+                                });
+                                body = parsed?.response?.body;
+                            } else {
+                                const jsonData = typeof response.data === 'string' ? JSON.parse(rawData) : response.data;
+                                body = jsonData?.response?.body;
+                            }
+                            if (!body || !body.items) return null;
+                            let items = body.items.item;
+                            if (!items) return null;
+                            if (!Array.isArray(items)) items = [items];
+
+                            // Map and filter items for this month
+                            const monthApartments = items.map((item) => ({
+                                aptName: String(item['아파트'] || item.aptNm || '').trim(),
+                                price: String(item['거래금액'] || item.dealAmount || '').trim().replace(/,/g, ''),
+                                area: parseFloat(item['전용면적'] || item.excluUseAr || 0),
+                                floor: parseInt(item['층'] || item.floor || 0, 10),
+                                buildYear: parseInt(item['건축년도'] || item.buildYear || 0, 10),
+                                dealYear: parseInt(item['년'] || item.dealYear || 0, 10),
+                                dealMonth: parseInt(item['월'] || item.dealMonth || 0, 10),
+                                dealDay: parseInt(item['일'] || item.dealDay || 0, 10),
+                                dong: String(item['법정동'] || item.umdNm || '').trim(),
+                                jibun: String(item['지번'] || item.jibun || '').trim(),
+                                regionCode: String(item['지역코드'] || item.dealingGbn || regionCode).trim(),
+                            })).filter(apt => apt.aptName.includes(keyword));
+
+                            return { ym, items: monthApartments };
+                        })
+                        .catch((e) => {
+                            console.error(`Failed to fetch for ${ym}:`, e.message);
+                            return null;
+                        })
+                );
+            }
+        }
+
+        const results = await Promise.all(fetchPromises);
+
+        // Process new fetched data
+        results.forEach(result => {
+            if (result && result.items) {
+                // Group raw items from this month into apartment objects
+                const groupedForMonth = new Map();
+                result.items.forEach(apt => {
+                    const key = `${apt.aptName}_${apt.dong}_${apt.jibun}`;
+                    if (!groupedForMonth.has(key)) {
+                        groupedForMonth.set(key, {
+                            aptName: apt.aptName,
+                            dong: apt.dong,
+                            jibun: apt.jibun,
+                            buildYear: apt.buildYear,
+                            regionCode: apt.regionCode,
+                            transactions: [],
+                        });
+                    }
+                    groupedForMonth.get(key).transactions.push({
+                        price: parseInt(apt.price, 10),
+                        area: apt.area,
+                        floor: apt.floor,
+                        dealYear: apt.dealYear,
+                        dealMonth: apt.dealMonth,
+                        dealDay: apt.dealDay,
+                    });
+                });
+                allApartments.push(...Array.from(groupedForMonth.values()));
+            }
+        });
+
+        // Now we have a list of apartment objects from all months (cached + freshly fetched)
+        // Need to merge apartments with the same key across different months
+        const finalGroupedMap = new Map();
+        allApartments.forEach(apt => {
+            const key = `${apt.aptName}_${apt.dong}_${apt.jibun}`;
+            if (!finalGroupedMap.has(key)) {
+                // Clone the object to avoid mutating cached data
+                finalGroupedMap.set(key, {
+                    ...apt,
+                    transactions: [...apt.transactions]
+                });
+            } else {
+                // Merge transactions
+                const existing = finalGroupedMap.get(key);
+                existing.transactions.push(...apt.transactions);
+            }
+        });
+
+        const mergedApartments = Array.from(finalGroupedMap.values());
+
+        // Sort transactions within each apartment
+        mergedApartments.forEach(apt => {
+            apt.transactions.sort((a, b) => {
+                const dateA = a.dealYear * 10000 + a.dealMonth * 100 + a.dealDay;
+                const dateB = b.dealYear * 10000 + b.dealMonth * 100 + b.dealDay;
+                return dateB - dateA; // Descending (newest first)
+            });
+        });
+
+        res.json({
+            apartments: mergedApartments,
+            totalCount: mergedApartments.length,
+            regionCode,
+            keyword,
+            monthsChecked: monthCount
+        });
+    } catch (error) {
+        console.error('아파트 키워드 검색 오류:', error.message);
+        res.status(500).json({ error: '데이터를 검색하는 중 오류가 발생했습니다.' });
+    }
+});
+
 export default router;

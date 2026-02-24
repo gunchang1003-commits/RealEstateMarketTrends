@@ -6,7 +6,7 @@ import PriceChart from './components/PriceChart';
 import AptDetailPanel from './components/AptDetailPanel';
 import KakaoMap from './components/KakaoMap';
 import PanoramaView from './components/PanoramaView';
-import { fetchApartments, geocodeAddress } from './utils/api';
+import { fetchApartments, geocodeAddress, fetchApartmentsByKeyword } from './utils/api';
 import { REGION_CENTERS } from './utils/regions';
 
 import GoogleMap from './components/GoogleMap';
@@ -16,25 +16,56 @@ function App() {
     const [selectedApt, setSelectedApt] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [searchInfo, setSearchInfo] = useState({ regionCode: '', yearMonth: '', regionName: '', districtName: '' });
+    const [searchInfo, setSearchInfo] = useState({ regionCode: '', yearMonth: '', regionName: '', districtName: '', keyword: '' });
     const [showPanorama, setShowPanorama] = useState(false);
     const [panoramaPosition, setPanoramaPosition] = useState(null);
     const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.9780 });
     const [mapZoom, setMapZoom] = useState(14);
     const [geocodedApts, setGeocodedApts] = useState([]);
-    const [sidebarTab, setSidebarTab] = useState('search'); // 'search', 'detail', 'chart'
+    const [sidebarTab, setSidebarTab] = useState('search'); // 'search', 'detail', 'chart', 'favorites'
     const [mapProvider, setMapProvider] = useState('kakao'); // 'kakao' | 'google'
+    const [favorites, setFavorites] = useState(() => {
+        const saved = localStorage.getItem('remt_favorites');
+        try {
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error('Failed to parse favorites from local storage', e);
+            return [];
+        }
+    });
 
-    const handleSearch = useCallback(async (regionCode, yearMonth, regionName, districtName) => {
+    useEffect(() => {
+        localStorage.setItem('remt_favorites', JSON.stringify(favorites));
+    }, [favorites]);
+
+    const toggleFavorite = useCallback((apt) => {
+        setFavorites(prev => {
+            const isFav = prev.some(f => f.aptName === apt.aptName && f.dong === apt.dong && f.jibun === apt.jibun);
+            if (isFav) {
+                return prev.filter(f => !(f.aptName === apt.aptName && f.dong === apt.dong && f.jibun === apt.jibun));
+            } else {
+                return [...prev, apt];
+            }
+        });
+    }, []);
+
+    const handleSearch = useCallback(async (regionCode, yearMonth, regionName, districtName, keyword = '') => {
         setLoading(true);
         setError(null);
         setSelectedApt(null);
         setSidebarTab('search');
 
         try {
-            const data = await fetchApartments(regionCode, yearMonth);
+            let data;
+            if (keyword) {
+                data = await fetchApartmentsByKeyword(regionCode, keyword);
+                setSearchInfo({ regionCode, yearMonth: '최근 6개월', regionName, districtName, keyword });
+            } else {
+                data = await fetchApartments(regionCode, yearMonth);
+                setSearchInfo({ regionCode, yearMonth, regionName, districtName, keyword: '' });
+            }
+
             setApartments(data.apartments || []);
-            setSearchInfo({ regionCode, yearMonth, regionName, districtName });
 
             // Move map to region center
             const regionPrefix = regionCode.substring(0, 2);
@@ -100,14 +131,66 @@ function App() {
 
 
 
-    const handleSelectApt = useCallback((apt) => {
-        setSelectedApt(apt);
-        setSidebarTab('detail');
+    const handleSelectApt = useCallback(async (apt) => {
+        // If we already have coordinates, just use them
         if (apt.lat && apt.lng) {
+            setSelectedApt(apt);
+            setSidebarTab('detail');
             setMapCenter({ lat: apt.lat, lng: apt.lng });
             setMapZoom(17);
+
+            // Add to geocodedApts if not already there so it shows on the map
+            setGeocodedApts(prev => {
+                const exists = prev.some(g => g.aptName === apt.aptName && g.dong === apt.dong && g.jibun === apt.jibun);
+                if (!exists) return [...prev, apt];
+                return prev;
+            });
+            return;
         }
-    }, []);
+
+        // Setup loading state for the UI while we geocode
+        setLoading(true);
+        setSelectedApt(apt);
+        setSidebarTab('detail');
+
+        try {
+            // Need to reconstruct address - fallback to searchInfo if not available on apt object
+            // For favorites, we might need to store regionName/districtName when favoriting, 
+            // but for now let's try with just the dong and jibun, or basic geocoding
+            const address = apt.fullAddress || `${apt.dong} ${apt.jibun}`;
+            let geoResult = await geocodeAddress(address);
+
+            if (!geoResult.addresses || geoResult.addresses.length === 0) {
+                geoResult = await geocodeAddress(apt.dong);
+            }
+
+            if (geoResult.addresses && geoResult.addresses.length > 0) {
+                const { x, y } = geoResult.addresses[0];
+                const updatedApt = {
+                    ...apt,
+                    lat: parseFloat(y),
+                    lng: parseFloat(x)
+                };
+
+                setSelectedApt(updatedApt);
+                setMapCenter({ lat: updatedApt.lat, lng: updatedApt.lng });
+                setMapZoom(17);
+
+                // Add to geocodedApts so it appears on the map
+                setGeocodedApts(prev => {
+                    const exists = prev.some(g => g.aptName === updatedApt.aptName && g.dong === updatedApt.dong && g.jibun === updatedApt.jibun);
+                    if (!exists) return [...prev, updatedApt];
+                    return prev;
+                });
+            } else {
+                console.warn("Could not find coordinates for this apartment.");
+            }
+        } catch (err) {
+            console.error("Geocoding failed when selecting apartment", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchInfo]);
 
     const handleShowPanorama = useCallback((lat, lng) => {
         setPanoramaPosition({ lat, lng });
@@ -163,6 +246,12 @@ function App() {
                         >
                             📊 차트
                         </button>
+                        <button
+                            className={`tab-btn ${sidebarTab === 'favorites' ? 'active' : ''}`}
+                            onClick={() => setSidebarTab('favorites')}
+                        >
+                            ⭐ 관심
+                        </button>
                     </div>
 
                     <div className="sidebar-content">
@@ -215,6 +304,8 @@ function App() {
                                     apartment={selectedApt}
                                     searchInfo={searchInfo}
                                     onShowPanorama={handleShowPanorama}
+                                    isFavorite={favorites.some(f => f.aptName === selectedApt.aptName && f.dong === selectedApt.dong && f.jibun === selectedApt.jibun)}
+                                    onToggleFavorite={() => toggleFavorite(selectedApt)}
                                 />
                             </div>
                         )}
@@ -225,6 +316,57 @@ function App() {
                                     apartment={selectedApt}
                                     searchInfo={searchInfo}
                                 />
+                            </div>
+                        )}
+
+                        {sidebarTab === 'favorites' && (
+                            <div className="animate-fade-in">
+                                <h3 className="section-title">
+                                    관심 아파트 목록
+                                    <span className="count-badge">{favorites.length}</span>
+                                </h3>
+                                {favorites.length === 0 ? (
+                                    <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⭐</div>
+                                        <p>관심 아파트가 없습니다.<br />아파트 상세 화면에서 별표를 눌러 추가해보세요!</p>
+                                    </div>
+                                ) : (
+                                    <div className="apt-list">
+                                        {favorites.map((apt, idx) => {
+                                            const avgPrice = apt.avgPrice || (apt.transactions ? apt.transactions.reduce((s, t) => s + t.price, 0) / apt.transactions.length : 0);
+                                            return (
+                                                <div
+                                                    key={`fav_${apt.aptName}_${apt.dong}_${apt.jibun}_${idx}`}
+                                                    className={`apt-list-item ${selectedApt?.aptName === apt.aptName && selectedApt?.dong === apt.dong && selectedApt?.jibun === apt.jibun ? 'selected' : ''}`}
+                                                    onClick={() => handleSelectApt(apt)}
+                                                    style={{ position: 'relative' }}
+                                                >
+                                                    <div className="apt-list-name">{apt.aptName}</div>
+                                                    <button
+                                                        className="favorite-btn active"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleFavorite(apt);
+                                                        }}
+                                                        style={{ position: 'absolute', top: '12px', right: '12px' }}
+                                                    >
+                                                        ★
+                                                    </button>
+                                                    <div className="apt-list-meta">
+                                                        <span>{apt.dong}</span>
+                                                        <span className="apt-list-price">
+                                                            {avgPrice > 0 ? `평균 ${Math.round(avgPrice).toLocaleString()}만원` : ''}
+                                                        </span>
+                                                    </div>
+                                                    <div className="apt-list-footer">
+                                                        {apt.transactions && <span className="apt-list-count">{apt.transactions.length}건</span>}
+                                                        <span className="apt-list-year">건축 {apt.buildYear}년</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -255,6 +397,7 @@ function App() {
                             selectedApt={selectedApt}
                             onSelectApt={handleSelectApt}
                             onShowPanorama={handleShowPanorama}
+                            favorites={favorites}
                         />
                     ) : (
                         <GoogleMap
@@ -264,6 +407,7 @@ function App() {
                             selectedApt={selectedApt}
                             onSelectApt={handleSelectApt}
                             onShowPanorama={handleShowPanorama}
+                            favorites={favorites}
                         />
                     )}
 

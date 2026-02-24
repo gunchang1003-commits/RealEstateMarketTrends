@@ -17,7 +17,7 @@ const mapOptions = {
     clickableIcons: false, // Prevent clicking on POIs
 };
 
-function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama }) {
+function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [] }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -79,6 +79,7 @@ function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt
 
                     const bgColor = getMarkerColorByPrice(apt.avgPrice);
                     const isSelected = selectedApt?.aptName === apt.aptName && selectedApt?.dong === apt.dong;
+                    const isFavorite = favorites.some(f => f.aptName === apt.aptName && f.dong === apt.dong && f.jibun === apt.jibun);
 
                     return (
                         <OverlayView
@@ -99,6 +100,7 @@ function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt
                                 style={{ cursor: 'pointer', zIndex: isSelected ? 100 : 1 }}
                             >
                                 <div className={`marker-bubble ${isSelected ? 'selected' : ''}`} style={{ background: bgColor }}>
+                                    {isFavorite && <span style={{ color: '#ffd700', textShadow: '0 0 2px rgba(0,0,0,0.5)', marginRight: '2px' }}>★</span>}
                                     <span className="marker-name">
                                         {apt.aptName.length > 8 ? apt.aptName.slice(0, 8) + '…' : apt.aptName}
                                     </span>

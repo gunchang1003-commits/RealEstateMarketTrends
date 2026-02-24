@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatPriceShort } from '../utils/format';
 import { getMarkerColorByPrice } from '../utils/colors';
 
-export default function KakaoMap({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama }) {
+export default function KakaoMap({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [] }) {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const overlaysRef = useRef([]);
@@ -76,12 +76,13 @@ export default function KakaoMap({ center, zoom, apartments, selectedApt, onSele
 
             const bgColor = getMarkerColorByPrice(apt.avgPrice);
             const isSelected = selectedApt?.aptName === apt.aptName && selectedApt?.dong === apt.dong;
+            const isFavorite = favorites.some(f => f.aptName === apt.aptName && f.dong === apt.dong && f.jibun === apt.jibun);
 
             const content = document.createElement('div');
             content.className = 'apt-marker';
             content.innerHTML = `
                 <div class="marker-bubble ${isSelected ? 'selected' : ''}" style="background: ${bgColor};">
-                    <span class="marker-name">${apt.aptName.length > 8 ? apt.aptName.slice(0, 8) + '…' : apt.aptName}</span>
+                    ${isFavorite ? '<span style="color: #ffd700; text-shadow: 0 0 2px rgba(0,0,0,0.5);">★</span> ' : ''}<span class="marker-name">${apt.aptName.length > 8 ? apt.aptName.slice(0, 8) + '…' : apt.aptName}</span>
                     ${formatPriceShort(apt.avgPrice)}
                 </div>
                 <div class="marker-tail" style="border-top: 6px solid ${bgColor};"></div>

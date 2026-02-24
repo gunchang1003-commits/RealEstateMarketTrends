@@ -1,6 +1,6 @@
 import { formatPrice, formatDealDate, sqmToPyeong } from '../utils/format';
 
-export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama }) {
+export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama, isFavorite, onToggleFavorite }) {
     if (!apartment) return null;
 
     const transactions = apartment.transactions || [];
@@ -10,11 +10,20 @@ export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama }
 
     return (
         <div className="detail-panel">
-            <div className="detail-header">
-                <h3>{apartment.aptName}</h3>
-                <div className="detail-address">
-                    {searchInfo.regionName} {searchInfo.districtName} {apartment.dong} {apartment.jibun}
+            <div className="detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h3>{apartment.aptName}</h3>
+                    <div className="detail-address">
+                        {searchInfo.regionName} {searchInfo.districtName} {apartment.dong} {apartment.jibun}
+                    </div>
                 </div>
+                <button
+                    className={`favorite-btn ${isFavorite ? 'active' : ''}`}
+                    onClick={onToggleFavorite}
+                    title={isFavorite ? "관심 목록에서 제거" : "관심 목록에 추가"}
+                >
+                    {isFavorite ? '★' : '☆'}
+                </button>
             </div>
 
             <div className="detail-info-grid">
