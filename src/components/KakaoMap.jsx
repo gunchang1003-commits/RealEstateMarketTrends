@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatPriceShort } from '../utils/format';
 import { getMarkerColorByPrice } from '../utils/colors';
 
-export default function KakaoMap({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [], onMapMove }) {
+export default function KakaoMap({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [], onMapMove, nearbyPlaces = [], nearbyCategory }) {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const overlaysRef = useRef([]);
@@ -155,6 +155,54 @@ export default function KakaoMap({ center, zoom, apartments, selectedApt, onSele
             overlaysRef.current.push(overlay);
         });
     }, [apartments, selectedApt, mapReady]);
+
+    // Nearby places markers
+    const placesOverlaysRef = useRef([]);
+    useEffect(() => {
+        if (!mapInstanceRef.current || !mapReady) return;
+
+        // Clear previous nearby place overlays
+        placesOverlaysRef.current.forEach((o) => o.setMap(null));
+        placesOverlaysRef.current = [];
+
+        if (!nearbyPlaces || nearbyPlaces.length === 0) return;
+
+        const categoryEmoji = { FD6: '🍽', CE7: '☕', SC4: '🏫' };
+        const categoryColor = { FD6: '#ef4444', CE7: '#f59e0b', SC4: '#10b981' };
+        const emoji = categoryEmoji[nearbyCategory] || '📍';
+        const bgColor = categoryColor[nearbyCategory] || '#6366f1';
+
+        nearbyPlaces.forEach((place) => {
+            if (!place.lat || !place.lng) return;
+
+            const content = document.createElement('div');
+            content.className = 'apt-marker';
+            content.innerHTML = `
+                <div class="marker-bubble" style="background: ${bgColor};">
+                    <span class="marker-name">${emoji} ${place.name.length > 10 ? place.name.slice(0, 10) + '…' : place.name}</span>
+                    ${place.distance}m
+                </div>
+                <div class="marker-tail" style="border-top: 6px solid ${bgColor};"></div>
+            `;
+
+            if (place.url) {
+                content.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.open(place.url, '_blank');
+                });
+            }
+
+            const overlay = new window.kakao.maps.CustomOverlay({
+                position: new window.kakao.maps.LatLng(place.lat, place.lng),
+                content: content,
+                yAnchor: 1.3,
+                zIndex: 50,
+            });
+
+            overlay.setMap(mapInstanceRef.current);
+            placesOverlaysRef.current.push(overlay);
+        });
+    }, [nearbyPlaces, nearbyCategory, mapReady]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>

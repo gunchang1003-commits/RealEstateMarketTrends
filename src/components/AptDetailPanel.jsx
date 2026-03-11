@@ -1,6 +1,7 @@
 import { formatPrice, formatDealDate, sqmToPyeong } from '../utils/format';
+import NearbyPlaces from './NearbyPlaces';
 
-export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama, isFavorite, onToggleFavorite }) {
+export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama, isFavorite, onToggleFavorite, onPlacesLoaded }) {
     if (!apartment) return null;
 
     const transactions = apartment.transactions || [];
@@ -89,6 +90,9 @@ export default function AptDetailPanel({ apartment, searchInfo, onShowPanorama, 
                     </button>
                 )}
             </div>
+
+            {/* 주변 시설 정보 */}
+            <NearbyPlaces lat={apartment.lat} lng={apartment.lng} onPlacesLoaded={onPlacesLoaded} />
 
             {/* Transaction history table */}
             <div className="section-title" style={{ marginTop: 16 }}>

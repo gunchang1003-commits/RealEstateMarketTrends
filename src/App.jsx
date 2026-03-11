@@ -25,6 +25,8 @@ function App() {
     const [geocodedApts, setGeocodedApts] = useState([]);
     const [sidebarTab, setSidebarTab] = useState('search'); // 'search', 'detail', 'chart', 'favorites'
     const [mapProvider, setMapProvider] = useState('kakao'); // 'kakao' | 'google'
+    const [nearbyPlaces, setNearbyPlaces] = useState([]);
+    const [nearbyCategory, setNearbyCategory] = useState(null);
     const [favorites, setFavorites] = useState(() => {
         const saved = localStorage.getItem('remt_favorites');
         try {
@@ -381,6 +383,11 @@ function App() {
         }
     }, []);
 
+    const handlePlacesLoaded = useCallback((places, category) => {
+        setNearbyPlaces(places || []);
+        setNearbyCategory(category);
+    }, []);
+
     const handleShowPanorama = useCallback((lat, lng) => {
         setPanoramaPosition({ lat, lng });
         setShowPanorama(true);
@@ -511,6 +518,7 @@ function App() {
                                     onShowPanorama={handleShowPanorama}
                                     isFavorite={favorites.some(f => f.aptName === selectedApt.aptName && f.dong === selectedApt.dong && f.jibun === selectedApt.jibun)}
                                     onToggleFavorite={() => toggleFavorite(selectedApt)}
+                                    onPlacesLoaded={handlePlacesLoaded}
                                 />
                             </div>
                         )}
@@ -604,6 +612,8 @@ function App() {
                             onShowPanorama={handleShowPanorama}
                             favorites={favorites}
                             onMapMove={handleMapMove}
+                            nearbyPlaces={nearbyPlaces}
+                            nearbyCategory={nearbyCategory}
                         />
                     ) : (
                         <GoogleMap
@@ -615,6 +625,8 @@ function App() {
                             onShowPanorama={handleShowPanorama}
                             favorites={favorites}
                             onMapMove={handleMapMove}
+                            nearbyPlaces={nearbyPlaces}
+                            nearbyCategory={nearbyCategory}
                         />
                     )}
 

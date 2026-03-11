@@ -15,9 +15,15 @@ const mapOptions = {
     streetViewControl: true,
     fullscreenControl: true,
     clickableIcons: false, // Prevent clicking on POIs
+    styles: [
+        {
+            featureType: "poi",
+            stylers: [{ visibility: "off" }]
+        }
+    ]
 };
 
-function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [], onMapMove }) {
+function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt, onShowPanorama, favorites = [], onMapMove, nearbyPlaces = [], nearbyCategory }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -168,6 +174,45 @@ function GoogleMapComponent({ center, zoom, apartments, selectedApt, onSelectApt
                                         {apt.aptName.length > 8 ? apt.aptName.slice(0, 8) + '…' : apt.aptName}
                                     </span>
                                     {formatPriceShort(apt.avgPrice)}
+                                </div>
+                                <div className="marker-tail" style={{ borderTop: `6px solid ${bgColor}` }}></div>
+                            </div>
+                        </OverlayView>
+                    );
+                })}
+
+                {/* Nearby places markers */}
+                {mapReady && nearbyPlaces && nearbyPlaces.map((place, index) => {
+                    if (!place.lat || !place.lng) return null;
+
+                    const categoryEmoji = { FD6: '🍽', CE7: '☕', SC4: '🏫' };
+                    const categoryColor = { FD6: '#ef4444', CE7: '#f59e0b', SC4: '#10b981' };
+                    const emoji = categoryEmoji[nearbyCategory] || '📍';
+                    const bgColor = categoryColor[nearbyCategory] || '#6366f1';
+
+                    return (
+                        <OverlayView
+                            key={`place-${index}`}
+                            position={{ lat: place.lat, lng: place.lng }}
+                            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                            getPixelPositionOffset={(width, height) => ({
+                                x: -(width / 2),
+                                y: -height,
+                            })}
+                        >
+                            <div
+                                className="apt-marker"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (place.url) window.open(place.url, '_blank');
+                                }}
+                                style={{ cursor: 'pointer', zIndex: 50 }}
+                            >
+                                <div className="marker-bubble" style={{ background: bgColor }}>
+                                    <span className="marker-name">
+                                        {emoji} {place.name.length > 10 ? place.name.slice(0, 10) + '…' : place.name}
+                                    </span>
+                                    {place.distance}m
                                 </div>
                                 <div className="marker-tail" style={{ borderTop: `6px solid ${bgColor}` }}></div>
                             </div>

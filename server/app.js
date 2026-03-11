@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apartmentsRouter from './routes/apartments.js';
 import geocodeRouter from './routes/geocode.js';
+import placesRouter from './routes/places.js';
 
 // ESM __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use('/api/apartments', apartmentsRouter);
 app.use('/api/geocode', geocodeRouter);
+app.use('/api/places', placesRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

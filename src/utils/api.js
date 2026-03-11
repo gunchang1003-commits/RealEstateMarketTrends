@@ -89,4 +89,22 @@ export async function geocodeKeyword(query) {
     }
 }
 
+/**
+ * 주변 장소 검색 (카테고리별)
+ * @param {number} lat - 위도
+ * @param {number} lng - 경도
+ * @param {string} category - 카테고리 코드 (FD6:음식점, CE7:카페, SC4:학교)
+ */
+export async function fetchNearbyPlaces(lat, lng, category = 'FD6') {
+    try {
+        const { data } = await api.get('/places', {
+            params: { lat, lng, category },
+        });
+        return data;
+    } catch (e) {
+        console.error('Nearby places search failed:', e.message);
+        return { places: [] };
+    }
+}
+
 export default api;

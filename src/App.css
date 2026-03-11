@@ -802,3 +802,191 @@
     color: #ffed4a;
     transform: scale(1.1);
 }
+
+/* ===== Nearby Places ===== */
+.nearby-places {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.nearby-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.nearby-tab-btn {
+    flex: 1;
+    padding: 8px 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-family);
+    text-align: center;
+}
+
+.nearby-tab-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-active);
+    color: var(--text-primary);
+}
+
+.nearby-tab-btn.active {
+    background: rgba(74, 158, 255, 0.12);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.nearby-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nearby-card {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.nearby-card:hover {
+    border-color: var(--border-active);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.nearby-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.nearby-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.nearby-card-name:hover {
+    color: var(--accent-blue);
+    text-decoration: underline;
+}
+
+.nearby-card-distance {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-green);
+    background: rgba(52, 211, 153, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.nearby-card-category {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.nearby-card-address {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.nearby-card-phone {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.nearby-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.nearby-error {
+    padding: 10px;
+    text-align: center;
+    color: var(--accent-red);
+    font-size: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: var(--radius-sm);
+}
+
+.nearby-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ===== Place Markers (Map) ===== */
+.place-marker {
+    position: relative;
+    cursor: pointer;
+    transform: translate(-50%, -100%);
+    transition: transform 0.15s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.place-marker:hover {
+    transform: translate(-50%, -100%) scale(1.1);
+    z-index: 60 !important;
+}
+
+.place-marker-bubble {
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    color: white;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.place-marker-emoji {
+    font-size: 13px;
+}
+
+.place-marker-name {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.place-marker-dist {
+    font-size: 9px;
+    opacity: 0.85;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.place-marker-tail {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    margin: 0 auto;
+}
